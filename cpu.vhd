@@ -18,7 +18,7 @@ Port (
         cs        : out std_logic; 
         led : out std_logic_vector (4 downto 0 );
         sda : inout std_logic;
-        scl : out std_logic;
+        scl : INout std_logic;
         lcd_rg    : out std_logic  );
 END cpu;
 
@@ -89,7 +89,7 @@ CONSTANT CMD_I2C_WRITE : INTEGER := 34;
         signal CMD : INTEGER;
     signal wait_counter : integer ;
     signal i_ready : std_logic;
-    type pipeline is (FETCH,FETCH_WAIT,FETCH_DONE,DECODE,RETRIEVE,RETRIEVE_WAIT,RETRIEVE_DONE,EXECUTE ,HALT,WAITS,PRINT,PRINTF,INPUT,INPUTI,INPUTI2,LCD,RAMS,RAMS2,I2C_WAIT);
+    type pipeline is (FETCH,FETCH_WAIT,FETCH_DONE,DECODE,RETRIEVE,RETRIEVE_WAIT,RETRIEVE_DONE,EXECUTE ,HALT,WAITS,PRINT,PRINTF,INPUT,INPUTI,INPUTI2,LCD,RAMS,RAMS2,I2C_WAIT,I2C_WAIT2,I2C_WAIT3,I2C_WAIT4);
     SIGNAL commands : pipeline;
      SIGNAL pc :unsigned(7 downto 0);
       
@@ -113,27 +113,31 @@ CONSTANT CMD_I2C_WRITE : INTEGER := 34;
          signal XX_2 :  std_logic_vector(7 downto 0);
         signal YY_1 :  std_logic_vector(7 downto 0);
         signal YY_2 :  std_logic_vector(7 downto 0);
-      signal  i2c_busy :  STD_LOGIC;  
-   signal i2c_ready :  STD_LOGIC;
-   signal i2c_enable :  STD_LOGIC;           
-   
-   signal instructions:  STD_LOGIC_VECTOR(1 DOWNTO 0);
-   signal send_data :  STD_LOGIC_VECTOR(7 DOWNTO 0); 
+
+    
+    signal    wre      :   STD_LOGIC;
+    signal    addr     :   STD_LOGIC_VECTOR(6 downto 0);
+    signal    data_in2  :   STD_LOGIC_VECTOR(7 downto 0);
+    signal    data_out :  STD_LOGIC_VECTOR(7 downto 0);
+
+
+
+
+
+
+
+  signal  i2c_busy :  STD_LOGIC;  
+  signal  i2c_ready :  STD_LOGIC;
+  signal  i2c_enable :  STD_LOGIC;           
+ 
+  signal  instructions:  STD_LOGIC_VECTOR(1 DOWNTO 0);
+  signal  send_data :  STD_LOGIC_VECTOR(7 DOWNTO 0); 
    signal rec_data :  STD_LOGIC_VECTOR(7 DOWNTO 0);
- signal  data_out :  std_logic_vector(7 downto 0);
-   signal     data_in2  :  std_logic_vector(7 downto 0);
-  signal      addr     :  std_logic_vector(6 downto 0);
-     
-    signal    wre      :  std_logic;
-     signal   ce       :  std_logic;
-      
 BEGIN
-      uut_i2c3 : entity work.wt11(Behavioral)
+      uut_memory_block : entity work.wt11(Behavioral)
     port map (
         data_out => data_out,
         clk => Clk,
-     
-    
         rst => nRst,
         wre => wre,
         addr => addr,
@@ -142,20 +146,21 @@ BEGIN
   
 
     uut_i2c : entity work.i2c(rtl) port map(
-         clk    =>Clk,                         
-    nRst =>nRst,
-    sdain =>sda,
-    sdaout=>sda, 
-     scl =>scl ,
-    i2c_busy =>i2c_busy,
-    i2c_ready =>i2c_ready,
-    i2c_enable =>     i2c_enable,    
-   
-    instructions=>instructions, 
-    send_data=>send_data,
-    rec_data =>rec_data
+          clk       => clk,
+        nrst=> nRst,
+      i2c_enable       => i2c_enable,
+      instructions      => instructions,
+    
+      send_data   => send_data, 
+      rec_data      => rec_data,
+      i2c_ready   => i2c_ready,
+      i2c_busy => i2c_busy,
+      sda      => sda,
+    
+      scl       => scl
 
         );
+
     uut_uart : entity work.uart_rx(rtl) port map (
          Clk => Clk,
     nRst  => nRst,
@@ -211,10 +216,14 @@ BEGIN
     PROCESS(Clk, nRst)is
     BEGIN
      if nRst ='0' then
-       
+        i2c_enable<='0';
+        instructions<=(OTHERS=>'0');
+    
+
+
         wre <='0';addr <=(others=>'0');
                                       data_in <= (others=>'0');
-        ce<='0';
+  
         CounterI <= 0;
         wait_counter <= 0;
        commands <= FETCH;
@@ -232,9 +241,6 @@ BEGIN
          ram<= (others => (others => '0'));
         B <= '0'; V <= '0'; C <= '0'; 
         CounterF <= 2;
-        instructions <="00";
-        i2c_enable<='0';
-        send_data <= (others=>'0');
   
           draw_on<='0';
          draw_color <= x"0000";
@@ -246,9 +252,9 @@ BEGIN
     elsif rising_edge(Clk) then
       
         if(i_ready ='1') then
-        ram(6)<=rec_data ;
+        ram(6)<=rec_data;
         ram(7) <=data_out(7 downto 0);
-          ce<='1';
+ 
         case commands is
                when FETCH =>
          
@@ -306,22 +312,24 @@ BEGIN
          case (CMD) is
             
              when CMD_I2C_START =>
+                        if i2c_busy='1' then
                         instructions<="00"; 
                         I2C_enable<='1';
-                          commands <= I2C_WAIT;  
-               when CMD_I2C_STOP => 
+                          commands <= I2C_WAIT;end if;  
+               when CMD_I2C_STOP =>      if i2c_busy='1' then
                         instructions<="01";
-                        I2C_enable<='1'; 
-                        commands <= I2C_WAIT;  
-             when CMD_I2C_READ =>
+                      I2C_enable<='1'; 
+                        commands <= I2C_WAIT;  end if; 
+             when CMD_I2C_READ =>     if i2c_busy='1' then
                         instructions<="10";
-                        I2C_enable<='1';
-                        commands <= I2C_WAIT;  
-             when CMD_I2C_WRITE => 
+                       I2C_enable<='1';
+                      commands <= I2C_WAIT;  end if; 
+                          
+             when CMD_I2C_WRITE =>      if i2c_busy='1' then
                         instructions<="11";
                         I2C_enable<='1';
                         send_data<=std_logic_vector(param);
-                        commands <= I2C_WAIT;  
+                         commands <= I2C_WAIT;  end if; 
                     when CMD_CLR =>
                         if inst(6)='1' then ram(to_integer(unsigned(data_in_buffer(7 downto 0)))) <= (others=>'0');
                                 else    ac <= (others=>'0');  
@@ -519,10 +527,22 @@ BEGIN
        
     end if;
     when I2C_WAIT=>
-     if i2c_ready='1' then 
-              i2c_enable<='0';     
-                       commands <= FETCH;
-                        end if;
+
+         
+                   commands <= I2C_WAIT2;
+         
+    
+     when I2C_WAIT2=>
+               if i2c_busy<='1'then
+                    i2c_enable<='0';
+                   commands <=  FETCH;
+            end if;
+         
+   
+    -- if i2c_ready='1' then 
+--              i2c_enable<='0';     
+               --        commands <= FETCH;
+                      --  end if;
     when INPUTI2=>
         CounterI <= 0;  
                 ram(to_integer(unsigned(data_in_buffer(7 downto 0)))) <= std_logic_vector(param); 
@@ -533,7 +553,7 @@ BEGIN
                 draw_on <='0';
             end if;
         when PRINT=>
-            
+  
             if text_finish = '1' then 
                 commands<= FETCH;
                     text_on <= '0';
