@@ -21,4 +21,4 @@ Below are key diagrams showing the FPGA pin assignments and other layout compone
 ![FPGA Design: code](./pic/code.png)
 
 ### Diagram 3
-![FPGA Design: screen](./pic/3.jpeg)
+![FPGA Design: screen](./pic/screen.jpeg)
