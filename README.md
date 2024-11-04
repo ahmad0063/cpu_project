@@ -8,6 +8,6 @@ The architecture supports fundamental operations and communication protocols, al
 
 For a comprehensive understanding of the processor's logic, architecture, and operational flow, please refer to the detailed documentation provided in the PDF:
 
-[Understanding the Logic of a VHDL 8-Bit Processor Design](/test.pdf)
+[Understanding the Logic of a VHDL 8-Bit Processor Design](/8_Bit_Processor.pdf)
 
 Feel free to explore the code and contribute to the project. Happy coding!
