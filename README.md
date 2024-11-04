@@ -15,11 +15,10 @@ For a comprehensive understanding of the processor's logic, architecture, and op
 Below are key diagrams showing the FPGA pin assignments and other layout components for the processor:
 
 ### Diagram 1
-![FPGA Design: circuit 1](./pic/circuit.png)
+![FPGA Design: circuit](./pic/1.png)
 
 ### Diagram 2
-![FPGA Design: code 2](./pic/code.jpeg)
+![FPGA Design: code](./pic/2.jpeg)
 
 ### Diagram 3
-![FPGA Design: screen 3](./pic/screen.jpeg)
-
+![FPGA Design: screen](./pic/3.jpeg)
