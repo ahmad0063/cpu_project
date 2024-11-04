@@ -53,11 +53,41 @@ ARCHITECTURE rtl OF cpu IS
     signal ready : std_logic;
 
     -- Define command constants for the CPU
-    CONSTANT CMD_CLR  : INTEGER := 0;       -- Clear command
-    CONSTANT CMD_ADD  : INTEGER := 1;       -- Add command
-    CONSTANT CMD_STA  : INTEGER := 2;       -- Store Accumulator
-    CONSTANT CMD_INV  : INTEGER := 3;       -- Invert command
-    -- ... remaining command constants (omitted for brevity)
+        CONSTANT CMD_CLR  : INTEGER := 0;
+        CONSTANT CMD_ADD  : INTEGER := 1;
+        CONSTANT CMD_STA  : INTEGER := 2;
+        CONSTANT CMD_INV  : INTEGER := 3;
+        CONSTANT CMD_PRNT : INTEGER := 4;
+        CONSTANT CMD_JMPZ : INTEGER := 5;
+        CONSTANT CMD_WAIT : INTEGER := 6;
+        CONSTANT CMD_HLT  : INTEGER := 7;
+        CONSTANT CMD_OR  : INTEGER := 8;
+        CONSTANT CMD_AND  : INTEGER := 9;
+        CONSTANT CMD_SUB  : INTEGER := 10;
+        CONSTANT CMD_JN : INTEGER := 11;
+        CONSTANT CMD_JP  : INTEGER := 12;
+        CONSTANT CMD_JZ  : INTEGER := 13;
+        CONSTANT CMD_JNZ  : INTEGER := 14;
+        CONSTANT CMD_JC : INTEGER := 15;
+        CONSTANT CMD_JNC  : INTEGER := 16;
+        CONSTANT CMD_JB   : INTEGER := 17;  
+        CONSTANT CMD_JNB  : INTEGER := 18;  
+        CONSTANT CMD_SHR  : INTEGER := 19;  -- Logical shift right
+        CONSTANT CMD_SHL  : INTEGER := 20;  -- Logical shift left
+        CONSTANT CMD_ROR  : INTEGER := 21;  -- Rotate right through carry
+        CONSTANT CMD_ROL  : INTEGER := 22;  -- Rotate left through carry
+        CONSTANT CMD_JV   : INTEGER := 23;  
+        CONSTANT CMD_JNV  : INTEGER := 24;
+        CONSTANT CMD_MUL  : INTEGER := 25;  -- New command for multiplication
+        CONSTANT CMD_DIV  : INTEGER := 26;  -- New command for division
+        CONSTANT CMD_PRNTF : INTEGER := 27;
+        CONSTANT CMD_INPT : INTEGER := 28;
+        CONSTANT CMD_INPTI : INTEGER := 29;
+        CONSTANT CMD_LCD : INTEGER := 30;
+        CONSTANT CMD_I2C_START : INTEGER := 31;
+        CONSTANT CMD_I2C_STOP : INTEGER := 32;
+        CONSTANT CMD_I2C_READ : INTEGER := 33;
+        CONSTANT CMD_I2C_WRITE : INTEGER := 34;
 
     signal CMD : INTEGER;
     signal wait_counter : integer;
