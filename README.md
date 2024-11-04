@@ -10,4 +10,16 @@ For a comprehensive understanding of the processor's logic, architecture, and op
 
 [Understanding the Logic of a VHDL 8-Bit Processor Design](/8_Bit_Processor.pdf)
 
-Feel free to explore the code and contribute to the project. Happy coding!
+## FPGA Design Diagrams
+
+Below are key diagrams showing the FPGA pin assignments and other layout components for the processor:
+
+### Diagram 1
+![FPGA Design: circuit 1](./pic/circuit.png)
+
+### Diagram 2
+![FPGA Design: code 2](./pic/code.jpeg)
+
+### Diagram 3
+![FPGA Design: screen 3](./pic/screen.jpeg)
+
