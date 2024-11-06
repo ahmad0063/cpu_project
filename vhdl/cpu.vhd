@@ -347,8 +347,121 @@ BEGIN
                             end if;
                             ac <= ac + param;
 
-                        -- Additional command cases like CMD_STA, CMD_INV, CMD_LCD, CMD_PRNT, etc.
-                        -- Each case block performs the specific actions as per the opcode
+                        when CMD_STA =>
+                               if inst(6)='1' and inst(7)='1' then ram(to_integer(unsigned(data_in_buffer(7 downto 0)))) <= std_logic_vector(ac(7 downto 0));
+                                elsif inst(7)='1' and inst(6)='0'   then  
+                                     wre <='1';
+                                    --ad <= std_logic_vector(param(3 downto 0));
+                                      --din <= std_logic_vector(ac(7 downto 0));
+                                        addr <=std_logic_vector(param(6 downto 0));
+                                        data_in2 <= std_logic_vector(ac(7 downto 0));
+                                elsif inst(7)='0' and inst(6)='0'   then  
+                                    
+                                wre <='0';
+                                --ad <= std_logic_vector(ac(3 downto 0));
+                                addr <= std_logic_vector(param(6 downto 0));
+                                end if;
+                        when CMD_INV=>
+                                 if inst(6)='1' then ram(to_integer(unsigned(data_in_buffer(7 downto 0)))) <= not ram(to_integer(unsigned(data_in_buffer(7 downto 0)))) ;
+                                  else     ac <= not(ac);end if;
+                        when CMD_LCD=>
+                                draw_on<='1';
+                                commands <= LCD;
+                                 draw_color <= ram(1) & ram (0);
+                                 YY_1 <= ram(2);
+                                YY_2 <= ram(3);
+                                 XX_1 <= ram(4);
+                                XX_2 <= ram(5);
+                         when CMD_PRNT =>
+                        
+                        text_on <= '1';
+                        text_send <= std_logic_vector(param);
+                        commands <= PRINT;
+                       when CMD_PRNTF =>
+                      text_on <= '1';
+                    CounterF <= 0; -- Reset the counter before starting
+                    text_send <= to_ascii(to_integer(param))(23 downto 16); -- Start with the most significant digit
+                    commands <= PRINTF;
+                       when CMD_INPT => 
+            commands <= INPUT;
+                    when CMD_INPTI => 
+            commands <= INPUTI;
+                    when CMD_JMPZ =>
+                            pc <= param;
+                     when CMD_JN =>
+                        if N = '1' then
+                            pc <= param;
+                        end if;
+                        when CMD_JP =>
+                        if N = '0' then
+                            pc <= param;
+                        end if;
+                         when CMD_JZ =>
+                        if Z = '1' then
+                            pc <= param;
+                        end if;
+                        when CMD_JNZ =>
+                        if Z = '0' then
+                            pc <= param;
+                        end if;
+                          when CMD_JC =>
+                        if C = '1' then
+                            pc <= param;
+                        end if;
+                        when CMD_JNC =>
+                        if C = '0' then
+                            pc <= param;
+                        end if;
+                     when CMD_OR =>
+                        ac <= ac or "0"&param;
+                     when CMD_AND =>
+                        ac <= ac AND "0"&param;
+                     when CMD_SUB =>
+                     if (ac(7) = '0' and param(7) = '1' and ac(8) = '1') or 
+       (ac(7) = '1' and param(7) = '0' and ac(8) = '0') then
+        V <= '1';  -- Set Overflow flag
+    else
+        V <= '0';  -- Clear Overflow flag
+    end if;
+                        if ac < param then
+        B <= '1';  -- Set Borrow flag
+    else
+        B <= '0';  -- Clear Borrow flag
+    end if;
+                        ac <= ac - param;
+                    when CMD_JB =>
+            if B = '1' then
+                pc <= param;
+            end if;
+
+        when CMD_JNB =>
+            if B = '0' then
+                pc <= param;
+            end if;
+             when CMD_JV =>
+            if V = '1' then
+                pc <= param;
+            end if;
+
+        when CMD_JNV =>
+            if V = '0' then
+                pc <= param;
+            end if;
+        when CMD_SHR =>
+            C <= ac(0); 
+            ac <= '0' & ac(8 downto 1); 
+
+        when CMD_SHL =>
+            C <= ac(8);
+            ac <= ac(7 downto 0) & '0'; 
+
+        when CMD_ROR =>
+            C <= ac(0);  
+            ac <= C & ac(8 downto 1);  
+
+        when CMD_ROL =>
+            C <= ac(8);  
+            ac <= ac(7 downto 0) & C; 
 
                         when CMD_WAIT =>
                             -- Wait Command with counter reset
@@ -376,7 +489,7 @@ BEGIN
                                 C <= '1';  -- Signal division by zero
                             end if;
 
-                        -- Other arithmetic and logic operations like CMD_OR, CMD_AND, CMD_SUB
+                      
                     end case;
 
                 when WAITS =>
