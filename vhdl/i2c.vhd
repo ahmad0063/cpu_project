@@ -2,6 +2,7 @@ LIBRARY ieee;
 USE ieee.std_logic_1164.all;
 USE ieee.numeric_std.all;
 
+-- Minimal I2C controller used by the CPU to issue start/stop/read/write cycles.
 ENTITY i2c IS
   PORT(
     clk     : IN     STD_LOGIC;                          
@@ -23,7 +24,7 @@ signal state : fsm;
 signal clockdivider: UNSIGNED (6 DOWNTO 0);
 signal bitTosend : integer;
 BEGIN
-	
+
   PROCESS(clk, nRst)
   BEGIN
     IF(nRst = '0') THEN      

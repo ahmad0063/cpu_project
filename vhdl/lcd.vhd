@@ -2,31 +2,31 @@ LIBRARY ieee;
 USE ieee.STD_LOGIC_1164.ALL;
 USE ieee.numeric_std.ALL;
 
--- Entity Declaration for SPI_LCD module
+-- SPI LCD controller used for display initialization, solid-color drawing,
+-- and simple character rendering from the built-in font table.
 ENTITY spi_lcd IS
     PORT (
-        Clk         : in  std_logic;                     -- System Clock
-        nRst        : in  std_logic;                     -- Active Low Reset
-        mosi        : out std_logic;                     -- SPI Master Out Slave In
-        sclk        : out std_logic;                     -- SPI Clock
-        lcd_rst     : out std_logic;                     -- LCD Reset
-        sc          : out std_logic;                     -- SPI Chip Select
-        text_finish : out std_logic;                     -- Text Transmission Complete
-        text_send   : in  std_logic_vector(7 downto 0);  -- Text to Send
-        text_on     : in  std_logic;                     -- Enable Text Display
-        i_ready     : out std_logic;                     -- Ready Signal
-        draw_on     : in  std_logic;                     -- Enable Drawing
-        draw_finish : out std_logic;                     -- Drawing Complete
-        draw_color  : in  std_logic_vector(15 downto 0); -- Color for Drawing
-        XX_1        : in  std_logic_vector(7 downto 0);  -- X1 Coordinate
-        XX_2        : in  std_logic_vector(7 downto 0);  -- X2 Coordinate
-        YY_1        : in  std_logic_vector(7 downto 0);  -- Y1 Coordinate
-        YY_2        : in  std_logic_vector(7 downto 0);  -- Y2 Coordinate
-        lcd_rg      : out std_logic                      -- LCD Register Select
+        Clk         : in  std_logic;
+        nRst        : in  std_logic;
+        mosi        : out std_logic;
+        sclk        : out std_logic;
+        lcd_rst     : out std_logic;
+        sc          : out std_logic;
+        text_finish : out std_logic;
+        text_send   : in  std_logic_vector(7 downto 0);
+        text_on     : in  std_logic;
+        i_ready     : out std_logic;
+        draw_on     : in  std_logic;
+        draw_finish : out std_logic;
+        draw_color  : in  std_logic_vector(15 downto 0);
+        XX_1        : in  std_logic_vector(7 downto 0);
+        XX_2        : in  std_logic_vector(7 downto 0);
+        YY_1        : in  std_logic_vector(7 downto 0);
+        YY_2        : in  std_logic_vector(7 downto 0);
+        lcd_rg      : out std_logic
     );
 END spi_lcd;
 
--- Architecture definition for SPI_LCD module
 ARCHITECTURE rtl OF spi_lcd IS
     SIGNAL ready           : std_logic;
     SIGNAL address_input   : std_logic_vector(23 downto 0);  -- Address input signal
@@ -39,7 +39,7 @@ ARCHITECTURE rtl OF spi_lcd IS
     SIGNAL sc_int          : std_logic;
     SIGNAL lcd_rg_int      : std_logic;
 
-    -- Type and signal declarations for command and font data arrays
+    -- Built-in 8x8 character font used by the text renderer.
     TYPE data_font IS ARRAY(0 to 127) OF std_logic_vector (63 downto 0);
     CONSTANT font_data : data_font := (x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"0000000000000000",x"183C3C1818001800",x"3636000000000000",x"36367F367F363600",x"0C3E031E301F0C00",x"006333180C666300",x"1C361C6E3B336E00",x"0606030000000000",x"180C0606060C1800",x"060C1818180C0600",x"00663CFF3C660000",x"000C0C3F0C0C0000",x"00000000000C0C06",x"0000003F00000000",x"00000000000C0C00",x"6030180C06030100",x"3E63737B6F673E00",x"0C0E0C0C0C0C3F00",x"1E33301C06333F00",x"1E33301C30331E00",x"383C36337F307800",x"3F031F3030331E00",x"1C06031F33331E00",x"3F3330180C0C0C00",x"1E33331E33331E00",x"1E33333E30180E00",x"000C0C00000C0C00",x"000C0C00000C0C06",x"180C0603060C1800",x"00003F00003F0000",x"060C1830180C0600",x"1E3330180C000C00",x"3E637B7B7B031E00",x"0C1E33333F333300",x"3F66663E66663F00",x"3C66030303663C00",x"1F36666666361F00",x"7F46161E16467F00",x"7F46161E16060F00",x"3C66030373667C00",x"3333333F33333300",x"1E0C0C0C0C0C1E00",x"7830303033331E00",x"6766361E36666700",x"0F06060646667F00",x"63777F7F6B636300",x"63676F7B73636300",x"1C36636363361C00",x"3F66663E06060F00",x"1E3333333B1E3800",x"3F66663E36666700",x"1E33070E38331E00",x"3F2D0C0C0C0C1E00",x"3333333333333F00",x"33333333331E0C00",x"6363636B7F776300",x"6363361C1C366300",x"3333331E0C0C1E00",x"7F6331184C667F00",x"1E06060606061E00",x"03060C1830604000",x"1E18181818181E00",x"081C366300000000",x"00000000000000FF",x"0C0C180000000000",x"00001E303E336E00",x"0706063E66663B00",x"00001E3303331E00",x"3830303E33336E00",x"00001E333F031E00",x"1C36060F06060F00",x"00006E33333E301F",x"0706366E66666700",x"0C000E0C0C0C1E00",x"300030303033331E",x"070666361E366700",x"0E0C0C0C0C0C1E00",x"0000337F7F6B6300",x"00001F3333333300",x"00001E3333331E00",x"00003B66663E060F",x"00006E33333E3078",x"00003B6E66060F00",x"00003E031E301F00",x"080C3E0C0C2C1800",x"0000333333336E00",x"00003333331E0C00",x"0000636B7F7F3600",x"000063361C366300",x"00003333333E301F",x"00003F190C263F00",x"380C0C070C0C3800",x"1818180018181800",x"070C0C380C0C0700",x"6E3B000000000000",x"0000000000000000"
 );
@@ -48,13 +48,13 @@ ARCHITECTURE rtl OF spi_lcd IS
     SIGNAL cmd_command     : cmd_command_array;
     CONSTANT HEX_VALUE     : std_logic_vector(7 downto 0) := x"11";
 
-    -- Enumeration for FSM states
+    -- LCD controller state machine.
     TYPE FSM IS (init_reset, init_prepare, init_wakeup, init_snooze, init_working, init_done,
                  next_state, next_state2, waiting, start_draw, waiting2, waiting3,
                  tnext_state, tnext_state2, twaiting, tstart_draw, finish, finish1);
     SIGNAL fsm_state : FSM := init_reset;  -- FSM state signal
 
-    -- Constants for display coordinates
+    -- Default full-screen drawing area after panel-specific offsets.
     CONSTANT y1 : integer := 40;
     CONSTANT y2 : integer := 279;
     CONSTANT x1 : integer := 53;
@@ -62,7 +62,7 @@ ARCHITECTURE rtl OF spi_lcd IS
 
     SIGNAL Y_1, Y_2, X_1, X_2 : std_logic_vector(15 downto 0);
 
-    -- Procedure to handle SPI command for drawing
+    -- Shared drawing procedure for rectangle updates.
     PROCEDURE process_spi (
         signal clk          : in std_logic;
         signal n_rst        : in std_logic;
@@ -142,6 +142,7 @@ ARCHITECTURE rtl OF spi_lcd IS
         END CASE;
     END PROCEDURE;
 
+    -- Shared text-rendering procedure using the built-in font ROM.
     PROCEDURE process_spi_text (
         signal clk : in std_logic;
         signal n_rst : in std_logic;

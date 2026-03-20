@@ -3,6 +3,7 @@ USE ieee.std_logic_1164.all;
 USE ieee.std_logic_arith.all;
 USE ieee.std_logic_unsigned.all;
 
+-- External SPI reader used to fetch program bytes from flash.
 ENTITY spi_external IS
   generic (
     Wait_time : in integer := 10000000

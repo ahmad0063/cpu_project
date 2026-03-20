@@ -2,6 +2,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+-- UART receiver for serial input to the CPU.
 entity uart_rx is 
 port(
     Clk : in std_logic;

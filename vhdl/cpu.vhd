@@ -2,37 +2,38 @@ LIBRARY ieee;
 USE ieee.STD_LOGIC_1164.ALL;
 USE ieee.numeric_std.ALL;
 
+-- Top-level CPU integrating instruction fetch/decode, local RAM, UART, SPI LCD,
+-- external SPI memory access, and a minimal I2C command path.
 ENTITY cpu IS
 Port (
-    -- Input and output ports for the CPU
-    Clk       : in  std_logic;         -- Clock signal
-    nRst      : in  std_logic;         -- Reset signal (active low)
-    mosi      : out std_logic;         -- SPI MOSI (Master Out Slave In) signal
-    sclk      : out std_logic;         -- SPI clock signal
-    lcd_rst   : out std_logic;         -- LCD reset signal
-    sc        : out std_logic;         -- LCD control signal
-    rx_pin    : in  std_logic;         -- UART receive pin
-    tx_pin    : out std_logic;         -- UART transmit pin
-    mosi2     : out std_logic;         -- Secondary MOSI signal
-    miso2     : in  std_logic;         -- Secondary MISO (Master In Slave Out) signal
-    sclk2     : out std_logic;         -- Secondary SPI clock signal
-    cs        : out std_logic;         -- Chip Select signal for SPI
-    led       : out std_logic_vector(4 downto 0);  -- LED output vector
-    sda       : inout std_logic;       -- I2C data line
-    scl       : inout std_logic;       -- I2C clock line
-    lcd_rg    : out std_logic          -- LCD red/green control signal
+    Clk       : in  std_logic;
+    nRst      : in  std_logic;
+    mosi      : out std_logic;
+    sclk      : out std_logic;
+    lcd_rst   : out std_logic;
+    sc        : out std_logic;
+    rx_pin    : in  std_logic;
+    tx_pin    : out std_logic;
+    mosi2     : out std_logic;
+    miso2     : in  std_logic;
+    sclk2     : out std_logic;
+    cs        : out std_logic;
+    led       : out std_logic_vector(4 downto 0);
+    sda       : inout std_logic;
+    scl       : inout std_logic;
+    lcd_rg    : out std_logic
 );
 END cpu;
 
 ARCHITECTURE rtl OF cpu IS
-    -- Signal declarations
+    -- General counters and formatting helpers.
     signal CounterF : integer;
     signal CounterI : integer;
 
-    -- Function to convert integer to ASCII representation
+    -- Convert an integer to three ASCII digits for decimal output.
     function to_ascii(number : integer) return std_logic_vector is
-        variable ascii_value : std_logic_vector(23 downto 0);  -- Holds 3 ASCII digits, each 8 bits
-        variable hundreds, tens, unitEs : integer;             -- Temporary variables for place values
+        variable ascii_value : std_logic_vector(23 downto 0);
+        variable hundreds, tens, unitEs : integer;
     begin
         hundreds := number / 100;              -- Calculate hundreds place
         tens := (number / 10) mod 10;          -- Calculate tens place
@@ -43,7 +44,7 @@ ARCHITECTURE rtl OF cpu IS
         return ascii_value;
     end function;
 
-    -- Additional signal declarations for data handling and control
+    -- Shared control/data signals between the CPU core and peripherals.
     signal text_send : std_logic_vector(7 downto 0);
     signal text_on : std_logic;
     signal text_finish : std_logic;
@@ -52,7 +53,7 @@ ARCHITECTURE rtl OF cpu IS
     signal address_input : std_logic_vector(23 downto 0);
     signal ready : std_logic;
 
-    -- Define command constants for the CPU
+    -- Instruction opcode values used by the decode/execute stage.
         CONSTANT CMD_CLR  : INTEGER := 0;
         CONSTANT CMD_ADD  : INTEGER := 1;
         CONSTANT CMD_STA  : INTEGER := 2;
@@ -93,13 +94,13 @@ ARCHITECTURE rtl OF cpu IS
     signal wait_counter : integer;
     signal i_ready : std_logic;
 
-    -- State machine pipeline stages
+    -- CPU control-state machine.
     type pipeline is (FETCH, FETCH_WAIT, FETCH_DONE, DECODE, RETRIEVE, RETRIEVE_WAIT, RETRIEVE_DONE, EXECUTE,
                       HALT, WAITS, PRINT, PRINTF, INPUT, INPUTI, INPUTI2, LCD, RAMS, RAMS2, I2C_WAIT, I2C_WAIT2,
                       I2C_WAIT3, I2C_WAIT4);
     SIGNAL commands : pipeline;
     
-    -- Additional registers and counters
+    -- Core registers.
     SIGNAL pc : unsigned(7 downto 0);   -- Program counter
     SIGNAL ac : unsigned(8 downto 0);   -- Accumulator
     SIGNAL param : unsigned(7 downto 0); -- Parameter register
@@ -108,12 +109,12 @@ ARCHITECTURE rtl OF cpu IS
     SIGNAL T_com : STD_LOGIC;           -- Transmit complete signal
     SIGNAL Data_in : STD_LOGIC_VECTOR(7 DOWNTO 0);  -- Data input
 
-    -- RAM definition and status flags
+    -- Small internal RAM and processor status flags.
     type memory is array(20 downto 0) of std_logic_vector(7 downto 0);
     signal ram : memory;
     signal N, Z, C, B, V : std_logic;   -- Status flags: Negative, Zero, Carry, Borrow, Overflow
 
-    -- I2C control signals
+    -- I2C side-band control signals.
     signal i2c_busy : std_logic;
     signal i2c_ready : std_logic;
     signal i2c_enable : std_logic;
@@ -121,7 +122,7 @@ ARCHITECTURE rtl OF cpu IS
     signal send_data : std_logic_vector(7 downto 0);  -- Data to send over I2C
     signal rec_data : std_logic_vector(7 downto 0);   -- Data received from I2C
 
-    -- Instances of external modules
+    -- Peripheral instances.
 BEGIN
     -- Instantiate memory block
     uut_memory_block : entity work.wt11(Behavioral)
@@ -193,11 +194,11 @@ BEGIN
             lcd_rg => lcd_rg
         );
 
-    -- Process for main control logic of the CPU
+    -- Main CPU state machine.
     PROCESS(Clk, nRst) IS
     BEGIN
         IF nRst = '0' THEN
-            -- Initialization on reset
+            -- Reset internal state, registers, and peripheral handshakes.
             i2c_enable <= '0';
             instructions <= (OTHERS => '0');
             wre <= '0';
@@ -229,32 +230,32 @@ BEGIN
             XX_2 <= std_logic_vector(to_unsigned(134,8));
       
 
-        -- Main Process
+        -- Execute one CPU state transition per clock.
 PROCESS(clk)
 BEGIN
     if rising_edge(clk) then
-        -- Check if "i_ready" signal is set to '1'
+        -- The CPU only advances after the LCD/SPI side reports ready.
         if(i_ready = '1') then
             ram(6) <= rec_data;
             ram(7) <= data_out(7 downto 0);
             
-            -- Command processing using the `commands` signal
+            -- Instruction pipeline control.
             case commands is
                 when FETCH =>
-                    -- Prepare for instruction fetch
+                    -- Start fetching the next opcode byte.
                     address_input <= x"0000" & STD_logic_vector(pc);
                     start <= '1';
                     commands <= FETCH_WAIT;
 
                 when FETCH_WAIT =>
-                    -- Wait for memory to be ready
+                    -- Wait for the external memory interface.
                     if ready = '1' then
                         commands <= FETCH_DONE;
                         start <= '0';
                     end if;
 
                 when FETCH_DONE =>
-                    -- Load instruction and proceed to decode
+                    -- Latch the opcode and move into decode.
                     T_en <= '1';
                     Data_in <= data_in_buffer(7 downto 0);
                     inst <= data_in_buffer(7 downto 0);
@@ -262,7 +263,7 @@ BEGIN
                     CMD <= to_integer(unsigned(data_in_buffer(5 downto 0)));
 
                 when DECODE =>
-                    -- Decode instruction and decide next action
+                    -- Decide whether the instruction needs an extra operand byte.
                     if T_com = '1' then
                         pc <= pc + 1;
                         T_en <= '0';
@@ -275,20 +276,20 @@ BEGIN
                     end if;
 
                 when RETRIEVE =>
-                    -- Retrieve data for instruction
+                    -- Request the operand byte.
                     address_input <= x"0000" & STD_logic_vector(pc);
                     start <= '1';
                     commands <= RETRIEVE_WAIT;
 
                 when RETRIEVE_WAIT =>
-                    -- Wait for retrieval completion
+                    -- Wait for the operand fetch to complete.
                     if ready = '1' then
                         commands <= RETRIEVE_DONE;
                         start <= '0';
                     end if;
 
                 when RETRIEVE_DONE =>
-                    -- Finalize retrieval and prepare for execution
+                    -- Select either immediate data or RAM-indexed data.
                     pc <= pc + 1;
                     if inst(6) = '1' then
                         param <= unsigned(ram(to_integer(unsigned(data_in_buffer(7 downto 0)))));
@@ -298,8 +299,8 @@ BEGIN
                     commands <= EXECUTE;
 
                 when EXECUTE =>
-                    -- Execute based on CMD opcode
-                    commands <= FETCH;  -- Default back to FETCH after execution
+                    -- Execute the decoded instruction.
+                    commands <= FETCH;
                     case CMD is
                         when CMD_I2C_START =>
                             -- I2C Start Command

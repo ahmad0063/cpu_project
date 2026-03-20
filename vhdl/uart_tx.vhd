@@ -2,6 +2,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+-- UART transmitter for serial debug and text output.
 entity uart_tx is
     port(
         Clk       : in std_logic;
@@ -14,15 +15,13 @@ entity uart_tx is
 end entity;
 
 architecture rtl of uart_tx is
-      constant baudrate : integer := 115200;
+    constant baudrate : integer := 115200;
     constant ClkFreq : integer := 27000000;
     constant baud_period : integer := ClkFreq / baudrate;
     signal store_data      : std_logic_vector(9 downto 0) ;
     signal bit_count       : integer ;
     signal tick_div        : integer ;
     signal tx_state        : std_logic ;
-
-   
 
 begin
 
@@ -55,7 +54,6 @@ begin
                 tick_div <= tick_div + 1;
             end if;
              end if;
-            -- Handle the transmit enable condition
             if T_en = '1' and tx_state = '0' then
                 store_data <= "1" & Data_in & "0";
                 tx_state <= '1';
